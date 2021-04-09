@@ -15,15 +15,19 @@ import scala.concurrent.ExecutionContext.global
 class TwitterStream[F[_]: ConcurrentEffect : ContextShift](ref: Ref[F, Int]) {
   implicit val f = new io.circe.jawn.CirceSupportParser(None, false).facade
 
-  def sign(consumerKey: String, consumerSecret: String, accessToken: String, accessSecret: String)
-          (req: Request[F]): F[Request[F]] = {
+  def sign(consumerKey: String,
+           consumerSecret: String,
+           accessToken: String,
+           accessSecret: String)(req: Request[F]): F[Request[F]] = {
     val consumer = oauth1.Consumer(consumerKey, consumerSecret)
     val token    = oauth1.Token(accessToken, accessSecret)
     oauth1.signRequest(req, consumer, callback = None, verifier = None, token = Some(token))
   }
 
-  def jsonStream(consumerKey: String, consumerSecret: String, accessToken: String, accessSecret: String)
-            (req: Request[F]): Stream[F, Json] =
+  def jsonStream(consumerKey: String,
+                 consumerSecret: String,
+                 accessToken: String,
+                 accessSecret: String)(req: Request[F]): Stream[F, Json] =
     for {
       client <- BlazeClientBuilder(global).stream
       sr  <- Stream.eval(sign(consumerKey, consumerSecret, accessToken, accessSecret)(req))

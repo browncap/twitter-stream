@@ -1,6 +1,6 @@
 package com.twitter
 
-import fs2.Stream
+import fs2.{Pipe, Stream}
 import org.http4s.server.blaze.BlazeServerBuilder
 import cats.effect._
 import cats.implicits._
@@ -9,6 +9,11 @@ import org.http4s.implicits._
 import org.http4s.{HttpApp, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.circe.CirceEntityEncoder._
+import org.http4s.server.websocket.WebSocketBuilder
+import org.http4s.websocket.WebSocketFrame
+import org.http4s.websocket.WebSocketFrame.Text
+
+import scala.concurrent.duration._
 
 object Server {
 
@@ -33,6 +38,17 @@ object Server {
         count <- ref.get
         resp <- Ok(count)
       } yield resp
+
+      case GET -> Root / "ws" =>
+        val to: Stream[F, WebSocketFrame] =
+          Stream.awakeEvery[F](1.seconds).flatMap { _ =>
+            Stream.eval(ref.get.map(i => Text(i.toString)))
+          }
+        val from: Pipe[F, WebSocketFrame, Unit] = _.evalMap {
+          case _ => F.delay(println(s"Unknown"))
+        }
+
+        WebSocketBuilder[F].build(to, from)
     }
   }
 

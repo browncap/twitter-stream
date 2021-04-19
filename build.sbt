@@ -2,7 +2,7 @@ scalaVersion := "2.13.4"
 
 resolvers += Resolver.sonatypeRepo("snapshots")
 
-val http4sVersion = "0.21.22"
+val http4sVersion = "0.21.7"
 val circeVersion  = "0.13.0"
 
 libraryDependencies ++= Seq(

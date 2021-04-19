@@ -13,16 +13,19 @@ import org.http4s.server.websocket.WebSocketBuilder
 import org.http4s.websocket.WebSocketFrame
 import org.http4s.websocket.WebSocketFrame.Text
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 object Server {
 
   def serve[F[_]](implicit F: ConcurrentEffect[F], CS: ContextShift[F], T: Timer[F]): Stream[F, ExitCode] = {
+    implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
+
     for {
       ref <- Stream.eval(Ref.of[F, Int](0))
       ts = new TwitterStream[F](ref)
       svc = routes(ref).orNotFound
-      server <- buildServer(svc)
+      server <- buildServer(ec)(svc)
         .concurrently {
           ts.stream
         }
@@ -52,8 +55,8 @@ object Server {
     }
   }
 
-  private def buildServer[F[_]](services: HttpApp[F])(implicit F: ConcurrentEffect[F], T: Timer[F]): Stream[F, ExitCode] =
-    BlazeServerBuilder[F](F, T)
+  private def buildServer[F[_] : ConcurrentEffect : Timer](ec: ExecutionContext)(services: HttpApp[F]): Stream[F, ExitCode] =
+    BlazeServerBuilder[F](ec)
       .bindHttp(8080, "localhost")
       .withHttpApp(services)
       .serve
